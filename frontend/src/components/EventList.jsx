@@ -1,8 +1,8 @@
 import { Button, Input, message, Select, Space, Table } from "antd";
 import axios from "axios";
-import moment from "moment";
+import dayjs from "dayjs";
 import React, { useEffect, useState } from "react";
-import { API_END_POINTS } from "../constants/constants";
+import { API_END_POINTS, DATE_FORMAT } from "../constants/constants";
 import AddEventModal from "./AddEventModal";
 
 const { Option } = Select;
@@ -26,7 +26,7 @@ const EventList = () => {
     category_id: null,
   });
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,6 +39,34 @@ const EventList = () => {
     fetchEvents(pagination.current, pagination.pageSize);
   }, [debouncedValue]);
 
+  // Fetch events on component mount or pagination change
+  useEffect(() => {
+    fetchCategories();
+    fetchEvents(pagination.current, pagination.pageSize);
+    return () => {
+      setEvents([]);
+      setLoading(false);
+      setCategories([]);
+      setDeleting(false);
+      setPagination({
+        current: 1,
+        pageSize: 10,
+        total: 0,
+      });
+      setFilters({
+        name: "",
+        category_id: null,
+      });
+      setDebouncedValue({
+        name: "",
+        category_id: null,
+      });
+      setIsEventModalOpen(false);
+      setSelectedEvent(null);
+    };
+  }, []);
+
+  //Fetch event categories
   const fetchCategories = async () => {
     try {
       const response = await axios.get(API_END_POINTS.GET_CATEGORIES);
@@ -92,12 +120,6 @@ const EventList = () => {
     fetchEvents(1, pagination.pageSize);
   };
 
-  // Fetch events on component mount or pagination change
-  useEffect(() => {
-    fetchCategories();
-    fetchEvents(pagination.current, pagination.pageSize);
-  }, []);
-
   // Columns for the table
   const columns = [
     {
@@ -119,13 +141,13 @@ const EventList = () => {
       title: "Start Time",
       dataIndex: "starttime",
       key: "starttime",
-      render: (text) => moment(text).format("YYYY-MM-DD HH:mm"),
+      render: (text) => dayjs(text).format(DATE_FORMAT.DATE_TIME),
     },
     {
       title: "End Time",
       dataIndex: "endtime",
       key: "endtime",
-      render: (text) => moment(text).format("YYYY-MM-DD HH:mm"),
+      render: (text) => dayjs(text).format(DATE_FORMAT.DATE_TIME),
     },
     {
       title: "Categories",
@@ -159,11 +181,6 @@ const EventList = () => {
     },
   ];
 
-  // Handle edit (placeholder function)
-  const handleEdit = (id) => {
-    message.info(`Edit event with ID: ${id}`);
-  };
-
   // Handle delete
   const handleDelete = async (id) => {
     try {
@@ -178,17 +195,20 @@ const EventList = () => {
     }
   };
 
+  // Handle add event
   const handleAddEventClick = () => {
     setIsEventModalOpen(true);
   };
 
+  // Handle modal close
   const handleModalClose = () => {
     setIsEventModalOpen(false);
-    setSelectedSlot(null);
+    setSelectedEvent(null);
   };
 
+  // Handle update event
   const handleEditEventClick = (event) => {
-    setSelectedSlot(event);
+    setSelectedEvent(event);
     setIsEventModalOpen(true);
   };
 
@@ -198,7 +218,7 @@ const EventList = () => {
         isModalOpen={isEventModalOpen}
         onClose={handleModalClose}
         callBack={() => fetchEvents(pagination.current, pagination.pageSize)}
-        selectedSlot={selectedSlot}
+        selectedEvent={selectedEvent}
       />
       <div
         style={{

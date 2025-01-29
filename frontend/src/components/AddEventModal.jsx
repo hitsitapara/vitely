@@ -3,13 +3,15 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { API_END_POINTS } from "../constants/constants";
 import dayjs from "dayjs";
+
 const { Option } = Select;
 
-function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
+function AddEventModal({ isModalOpen, onClose, selectedEvent, callBack }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
+  //Fetch event categories
   const fetchCategories = async () => {
     try {
       const response = await axios.get(API_END_POINTS.GET_CATEGORIES);
@@ -18,8 +20,13 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
       message.error("Failed to fetch categories.");
     }
   };
+
   useEffect(() => {
     fetchCategories();
+    return () => {
+      setCategories([]);
+      setLoading(false);
+    };
   }, []);
 
   // Handle form submission
@@ -33,21 +40,21 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
         endtime: values.endtime,
         category_ids: values.categories,
       };
-      if (selectedSlot) {
+      if (selectedEvent) {
         await axios.put(
-          API_END_POINTS.ADD_EVENTS + `/${selectedSlot.id}`,
+          API_END_POINTS.UPDATE_EVENT + `/${selectedEvent.id}`,
           payload
         );
         message.success("Event update successfully!");
       } else {
         await axios.post(API_END_POINTS.ADD_EVENTS, payload);
-        message.success("Event created successfully!");
+        message.success("Event added successfully!");
       }
       form.resetFields();
       callBack();
       onClose();
     } catch (error) {
-      message.error("Failed to create the event.");
+      message.error("Failed to add the event.");
     } finally {
       setLoading(false);
     }
@@ -55,7 +62,7 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
 
   return (
     <Modal
-      title="Basic Modal"
+      title={selectedEvent ? "Update Event" : "Add Event"}
       open={isModalOpen}
       footer={null}
       onCancel={onClose}
@@ -66,12 +73,12 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
         layout="vertical"
         onFinish={handleSubmitClick}
         initialValues={{
-          name: selectedSlot?.name,
-          description: selectedSlot?.description,
+          name: selectedEvent?.name,
+          description: selectedEvent?.description,
           categories:
-            selectedSlot?.categories?.map((category) => category.id) || [],
-          starttime: dayjs(selectedSlot?.starttime),
-          endtime: dayjs(selectedSlot?.endtime),
+            selectedEvent?.categories?.map((category) => category.id) || [],
+          starttime: dayjs(selectedEvent?.starttime),
+          endtime: dayjs(selectedEvent?.endtime),
         }}
       >
         <Form.Item
@@ -92,7 +99,6 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
           <Input.TextArea
             rows={4}
             placeholder="Enter event description"
-            defaultValue={selectedSlot?.description}
           />
         </Form.Item>
 
@@ -105,7 +111,6 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
             showTime
             format="YYYY-MM-DD HH:mm"
             style={{ width: "100%" }}
-            defaultValue={selectedSlot ? dayjs(selectedSlot.starttime) : ""}
           />
         </Form.Item>
 
@@ -130,7 +135,6 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
             showTime
             format="YYYY-MM-DD HH:mm"
             style={{ width: "100%" }}
-            defaultValue={selectedSlot ? dayjs(selectedSlot.endtime) : ""}
           />
         </Form.Item>
 
@@ -144,9 +148,6 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
             loading={loading}
             mode="multiple"
             allowClear
-            defaultValue={
-              selectedSlot?.categories?.map((category) => category.id) || []
-            }
           >
             {categories.map((category) => (
               <Option key={category.id} value={category.id}>
@@ -162,7 +163,7 @@ function AddEventModal({ isModalOpen, onClose, selectedSlot, callBack }) {
             loading={loading}
             style={{ width: "100%" }}
           >
-            {selectedSlot ? "Update" : "Create"} Event
+            {selectedEvent ? "Update" : "Add"} Event
           </Button>
         </Form.Item>
       </Form>
